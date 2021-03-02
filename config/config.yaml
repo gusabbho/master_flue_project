@@ -1,6 +1,6 @@
 VirusGan:
     Vocab_size: 21
-    epochs: 500
+    epochs: 5
     batch_size: 32
     dir: "weights/model"
     Generator:
@@ -29,11 +29,11 @@ VirusGan:
         beta_1_generator: 0.5          
     Metrics:
 Data:
-    file: ""
+    file_parents: "data-parents.fasta"
+    file_children: "data-children.fasta"
     max_samples: 10000
     seq_length: 512
 Log:
     base_dir: "../log"
-    img: img 
 Results:
     base_dir: "../results"
