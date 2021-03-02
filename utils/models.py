@@ -146,3 +146,7 @@ class VirusGan(tf.keras.Model):
     def validate_step(self, batch_data):
         # TODO 
         return 0
+    #@tf.function
+    def generate(self, data):
+        # TODO
+        return 0
