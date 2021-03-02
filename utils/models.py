@@ -42,7 +42,7 @@ class Discriminator(Model):
         self.conv2 = Conv1D(filters[1], size[0], strides=strides[0], padding='same', kernel_constraint = self.constraint, use_bias = False)
         self.conv3 = Conv1D(filters[2], size[0], strides=strides[0], padding='same', kernel_constraint = self.constraint, use_bias = False)
         self.conv4 = Conv1D(filters[3], size[0], strides=strides[0], padding='same', kernel_constraint = self.constraint, use_bias = False)
-        self.atte = SelfAttention(vocab)
+        self.atte = SelfAttention(vocab*2)
         self.conv = Conv1D(1, 4, strides=1, activation= activation, padding='same', kernel_constraint = self.constraint, use_bias = False)
         self.cat = Concatenate(axis=-1)
         
@@ -57,15 +57,15 @@ class Discriminator(Model):
     
 class VirusGan(tf.keras.Model):
 
-    def __init__(self, config, callbacks=None):
-        super(CycleGan, self).__init__()
+    def __init__(self, config):
+        super(VirusGan, self).__init__()
         self.Generator, self.Discriminator = self.load_models(config['VirusGan'])
          
         self.add  = tf.keras.layers.Add()
 
     def compile( self, loss_obj, optimizers):
         
-        super(CycleGan, self).compile()
+        super(VirusGan, self).compile()
         
         self.gen_optimizer = optimizers['Generator']
         self.disc_optimizer = optimizers['Discriminator']
@@ -96,11 +96,11 @@ class VirusGan(tf.keras.Model):
 
         vocab = config["Vocab_size"] 
 
-        Generator = Generator_res(G_filters, G_sizes, G_dilation, vocab, use_gumbel = G_gumbel, temperature = G_temperature)
+        generator = Generator_res(G_filters, G_sizes, G_dilation, vocab, use_gumbel = G_gumbel, temperature = G_temperature)
          
-        Discriminator = Discriminator(D_filters, D_sizes, D_strides, D_dilation, vocab, activation = D_activation)
+        discriminator = Discriminator(D_filters, D_sizes, D_strides, D_dilation, vocab, activation = D_activation)
 
-        return Generator, Discriminator
+        return generator, discriminator
     
     @tf.function
     def train_step(self, batch_data):
@@ -110,7 +110,7 @@ class VirusGan(tf.keras.Model):
         with tf.GradientTape(persistent=True) as tape:
             
             # Batch data
-            parent, child, W = batch_data
+            parent, child = batch_data
             
             # Generator output
             fake_child, _ = self.Generator(parent, training=True)
