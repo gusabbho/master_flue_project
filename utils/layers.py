@@ -54,6 +54,30 @@ class GumbelSoftmax(Layer):
         nom = tf.keras.activations.softmax((g + logits)/self.tau, axis=-1)
         return nom
     
+class SelfAttention(Layer):
+    def __init__(self, filters):
+        super(SelfAttention, self).__init__()
+        self.kernel_querry = Conv1D(max(1,filters//8), 1, padding= 'same', use_bias = False)
+        self.kernel_key    = Conv1D(max(1,filters//8), 1, padding= 'same', use_bias = False)
+        self.kernel_value  = Conv1D(max(1,filters//8), 1, padding= 'same', use_bias = False)
+        self.out           = Conv1D(filters,    1, padding = 'same', use_bias = False)
+        self.gamma = self.add_weight(name='gamma', initializer=tf.keras.initializers.Constant(value=1), trainable=True)
+            
+            
+    def call(self, x, mask=None):
+        querry = self.kernel_querry(x)
+        key = self.kernel_key(x)
+        value = self.kernel_value(x)
+        attention_weights = tf.math.softmax(tf.matmul(querry, key, transpose_b = True), axis=1)
+        attention_feature_map = tf.matmul(value, attention_weights, transpose_a = True)
+        if mask is not None:
+            attention_feature_map = tf.math.multiply(attention_feature_map, mask)
+        attention_feature_map = tf.transpose(attention_feature_map, [0,2,1])
+        
+        out = x + self.out(attention_feature_map)*self.gamma
+        
+        return out, attention_weights
+    
 class ResMod(Layer):
     """
     Residual module 
