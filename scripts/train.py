@@ -17,7 +17,6 @@ from matplotlib import pyplot as plt
 
 from utils.preprocessing import prepare_dataset
 from utils import models
-from utils import callbacks
 from utils import losses
 
 
@@ -35,24 +34,16 @@ args = parser.parse_args()
 def load_data(config):
     """ Function to load all the data """
     # Parameters
-    file_thermo = config['file_thermo']
-    file_meso   = config['file_meso']
+    file_parents = config['file_parents']
+    file_children   = config['file_children']
     seq_length  = config['seq_length']
     max_samples = config['max_samples']
     
-    thermo_train, thermo_val, n_thermo_train, n_thermo_val = prepare_dataset(file_thermo, 
-                                                                             seq_length = seq_length,
-                                                                             max_samples = max_samples)
+    train, test = prepare_dataset(file_parents, file_children, seq_length = seq_length, max_samples = max_samples)
     
 
-    data = {'thermo_train': thermo_train,
-            'meso_train': meso_train,
-            'thermo_val': thermo_val,
-            'meso_val': meso_val,
-            'n_thermo_train': n_thermo_train,
-            'n_meso_train': n_meso_train,
-            'n_thermo_val': n_thermo_val,
-            'n_meso_val': n_meso_val}
+    data = {"Train-Data": train,
+           "Test-Data": test}
     
     return data
 
@@ -106,7 +97,7 @@ def train(config, model, data, time):
 
 
     # TODO: implement metrics for validation
-    metrics = load_metrics(config['CycleGan']['Metrics'])
+    metrics = load_metrics(config['VirusGan']['Metrics'])
     
     # Declare history object # TODO: Implement validation metric
     history = {
@@ -115,19 +106,19 @@ def train(config, model, data, time):
     }
 
     # 
-    for epoch in range(config['CycleGan']['epochs']):
+    for epoch in range(config['VirusGan']['epochs']):
         # TODO change buffer size to fit data set 
-        batches = data.shuffle(buffer_size = 40000).batch(config['VirusGan']['batch_size'], drop_remainder=True) 
+        batches = data['Train-Data'].shuffle(buffer_size = 40000).batch(config['VirusGan']['batch_size'], drop_remainder=True) 
   
         #Anneal schedule for gumbel
-        if config['CycleGan']['Generator']['use_gumbel']:
-                model.G.gms.tau = max(0.3, np.exp(-0.01*epoch))
+        if config['VirusGan']['Generator']['use_gumbel']:
+                model.Generator.gms.tau = max(0.3, np.exp(-0.01*epoch))
                 
         for step, x in enumerate(batches):
             
             loss, logits = model.train_step(batch_data = x)
 
-            metrics['Generator_loss'](loss["Genenerator_loss"]) 
+            metrics['Generator_loss'](loss["Generator_loss"]) 
             metrics['Discriminator_loss'](loss["Discriminator_loss"])
 
         # TODO Validation of training
@@ -138,8 +129,8 @@ def train(config, model, data, time):
 
         if args.verbose:    
             print("Epoch: %d Generator loss: %2.4f  Discriminator loss: %2.4f" % 
-              (epoch, float(metrics['loss_G'].result()),
-               float(metrics['loss_F'].result())))
+              (epoch, float(metrics['Generator_loss'].result()),
+               float(metrics['Discriminator_loss'].result())))
             # TODO validation
             #print("Epoch: %d acc trans x: %2.4f acc trans y: %2.4f acc cycled x : %2.4f acc cycled y: %2.4f" % 
              # (epoch, metrics['val_***'].result(),
@@ -150,7 +141,7 @@ def train(config, model, data, time):
         with Generator_summary_writer.as_default():
             tf.summary.scalar('loss', metrics['Generator_loss'].result(), step = epoch, description = 'Generator Loss')
 
-        with D_x_summary_writer.as_default():         
+        with Discriminator_summary_writer.as_default():         
             tf.summary.scalar('loss', metrics['Discriminator_loss'].result(), step = epoch, description = 'Discriminator Loss')        
 
 
@@ -186,7 +177,7 @@ def main():
     data = load_data(config['Data'])
     
     # Initiate model
-    model = models.VirusGan(config, callbacks = cb)
+    model = models.VirusGan(config)
     # Compile model
     loss_obj  = load_losses(config['VirusGan']['Losses'])
     optimizers = load_optimizers(config['VirusGan']['Optimizers'])
@@ -195,6 +186,9 @@ def main():
     # Initiate Training
     history = train(config, model, data, time)
     
+    # check results dir
+    if not os.path.isdir(config['Results']['base_dir']):
+        os.mkdir(config['Results']['base_dir'])
     #writing results   
     result_dir = os.path.join(config['Results']['base_dir'],time)
     os.mkdir(os.path.join(result_dir))
