@@ -22,7 +22,7 @@ class Generator_res(Model):
             self.gms = Softmax()
         self.out = Conv1D(vocab, 3, padding = 'same', activation = self.gms)
     def call(self, x):
-        
+        #TODO ADD in noise
         x = self.res1(x)
         x = self.res2(x)
         x = self.res3(x)
