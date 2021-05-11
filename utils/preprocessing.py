@@ -66,8 +66,8 @@ def prepare_dataset(file_parents, file_children , seq_length = 1024, t_v_split =
         dict_parents['id'].append(rec.id)
         dict_parents['seq'].append(str(rec.seq))
         dict_parents['seq_bin'].append(to_binary(rec.seq, max_length=seq_length))
-        
-    for i, rec in enumerate(SeqIO.parse(file_parents, 'fasta')):
+    count=0
+    for i, rec in enumerate(SeqIO.parse(file_children, 'fasta')):
         count +=1
         if count >max_samples:
             break
@@ -76,9 +76,10 @@ def prepare_dataset(file_parents, file_children , seq_length = 1024, t_v_split =
         dict_children['id'].append(rec.id)
         dict_children['seq'].append(str(rec.seq))
         dict_children['seq_bin'].append(to_binary(rec.seq, max_length=seq_length))
-        
+      
    # Splitting data to training and validation sets
-
+    print(len(dict_parents["seq_bin"]))
+    print(len(dict_children["seq_bin"]))
     parent_train, parent_test, child_train, child_test = train_test_split(
                                                     np.array(dict_parents['seq_bin'],dtype=np.float32),
                                                     np.array(dict_children['seq_bin'], dtype = np.float32),

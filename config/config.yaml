@@ -32,7 +32,7 @@ Data:
     file_parents: "../../../parent_sequences_translated.fasta"
     file_children:  "../../../child_sequences_translated.fasta"
     max_samples: 10000
-    seq_length: 569
+    seq_length: 600
 Log:
     base_dir: "../log"
 Results:

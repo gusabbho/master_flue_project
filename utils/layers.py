@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.constraints import Constraint
-from tensorflow.keras.layers import Layer, Conv1D, LayerNormalization, Add, Concatenate, LeakyReLU, Softmax
+from tensorflow.keras.layers import Layer, Conv1D, LayerNormalization, Add, Concatenate, LeakyReLU, Softmax,Dropout
 import tensorflow_probability as tfp
 
 POWER_ITERATIONS = 5
@@ -89,7 +89,7 @@ class GumbelSoftmax_old(Layer):
         nom = tf.keras.activations.softmax((g + logits)/self.tau, axis=-1)
         return nom
     
- class GumbelSoftmax(Layer):
+class GumbelSoftmax(Layer):
     def __init__(self,temperature = 0.5, *args, **kwargs):
         super(GumbelSoftmax,self).__init__()
         
