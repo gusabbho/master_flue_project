@@ -29,8 +29,8 @@ VirusGan:
         beta_1_generator: 0.5          
     Metrics:
 Data:
-    file_parents: "../data/file.fasta"
-    file_children: "data-children.fasta"
+    file_parents: "../../../parent_sequences_translated.fasta"
+    file_children:  "../../../child_sequences_translated.fasta"
     max_samples: 10000
     seq_length: 569
 Log:

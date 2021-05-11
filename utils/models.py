@@ -23,7 +23,10 @@ class Generator_res(Model):
         self.out = Conv1D(vocab, 3, padding = 'same', activation = self.gms)
     def call(self, x):
         #TODO ADD in noise
-        x = self.res1(x)
+        shape = tf.shape(x)
+        noise= tf.random.normal(shape)
+        #newe_data = our_data + noise
+        x = self.res1(x + noise)
         x = self.res2(x)
         x = self.res3(x)
         x = self.res4(x)
