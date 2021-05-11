@@ -105,7 +105,14 @@ class GumbelSoftmax_old(Layer):
         nom = tf.keras.activations.softmax((g + logits)/self.tau, axis=-1)
         return nom
     
-class SelfAttention(Layer):
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'tau': self.tau
+        })
+        return config
+    
+class SelfAttention_old(Layer):
     def __init__(self, filters):
         super(SelfAttention, self).__init__()
         self.kernel_querry = Conv1D(max(1,filters//8), 1, padding= 'same', use_bias = False)
@@ -128,6 +135,62 @@ class SelfAttention(Layer):
         out = x + self.out(attention_feature_map)*self.gamma
         
         return out, attention_weights
+    
+class SelfAttention(Layer):
+    def __init__(self,  filters ):
+        super(SelfAttention, self).__init__()
+        
+        self.kernel_querry = tf.keras.layers.Dense(filters)
+        self.kernel_key    = tf.keras.layers.Dense(filters)
+        self.kernel_value  = tf.keras.layers.Dense(filters)
+        self.out           = tf.keras.layers.Dense(filters)
+        self.num_heads = 8
+        self.filters = filters
+        self.depth = filters // self.num_heads
+        self.gamma = self.add_weight(name='gamma', initializer=tf.keras.initializers.Constant(value=1), trainable=True)
+        self.dout = Dropout(0.3)
+        self.norm = LayerNormalization(axis = -1, epsilon = 1e-6)
+        
+    def split_heads(self, x, batch_size):
+        """Split the last dimension into (num_heads, depth).
+        Transpose the result such that the shape is (batch_size, num_heads, seq_len, depth)
+        """
+        x = tf.reshape(x, (batch_size, -1, self.num_heads, self.depth))
+        return tf.transpose(x, perm=[0, 2, 1, 3])        
+    
+    def call(self, x, mask=None, training = True):
+        batch_size = tf.shape(x)[0]
+        
+        querry = self.kernel_querry(x)
+        key    = self.kernel_key(x)
+        value  = self.kernel_value(x)
+        
+        querry = self.split_heads( querry, batch_size)
+        key    = self.split_heads( key, batch_size)
+        value  = self.split_heads( value, batch_size)
+         
+        
+        attention_logits  = tf.matmul(querry, key, transpose_b = True)
+        attention_weights = tf.math.softmax(attention_logits, axis=-1)
+        
+        attention_feature_map = tf.matmul(attention_weights, value)
+        if mask is not None:
+            attention_feature_map = tf.math.multiply(attention_feature_map, mask)
+            
+        attention_feature_map = tf.transpose(attention_feature_map, perm=[0, 2, 1, 3])
+
+        concat_attention = tf.reshape(attention_feature_map, (batch_size, -1, self.filters))
+        concat_attention = self.dout(concat_attention, training = training)
+        out = x + self.out(concat_attention)*self.gamma
+        out = self.norm(out)
+        return out, attention_weights
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'filters': self.filters     
+        })
+        return config
     
 class ResMod(Layer):
     """
