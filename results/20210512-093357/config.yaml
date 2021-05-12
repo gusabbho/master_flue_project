@@ -29,8 +29,8 @@ VirusGan:
         beta_1_generator: 0.5          
     Metrics:
 Data:
-    file_parents: "../../../train_parents"
-    file_children:  "../../../train_child"
+    file_parents: "test_parent"
+    file_children:  "test_child"
     max_samples: 10000
     seq_length: 600
 Log:

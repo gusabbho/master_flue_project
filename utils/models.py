@@ -152,11 +152,12 @@ class VirusGan(tf.keras.Model):
         return 0
     #@tf.function
     def generate(self, data):
-        parents, children = data
+        print("flag")
+        parents, children = data[0]
         fake = []
         for parent in parents:
             shape = tf.shape(parents)
-            parent = tf.reshape(parents, (1, shape[0], shape[1])):
+            parent = tf.reshape(parents, (1, shape[0], shape[1]))
             fake_child, _ = self.Generator(parent, training=False)
             fake.append(fake_child.numpy())
         seqs = []

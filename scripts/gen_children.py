@@ -6,6 +6,9 @@ sys.path.append(path)
 import numpy as np
 from Bio import SeqIO
 import argparse
+import datetime
+import yaml
+from utils import models
 
 from utils import preprocessing as pre
 
@@ -26,6 +29,7 @@ parser.add_argument('-n', '--num_data_children', type=int, default=1000,
 parser.add_argument('-v', '--verbose', action="store_true",
                    help = "Verbosity")
 
+parser.add_argument("-g", "--gpu", type=str, default = '1')
 
 
 
@@ -47,8 +51,10 @@ def generate_children(parents, num_children=1, seq_length= 100, n_mutations= 5):
 
 def writing_fasta(children, name = "data"):
     with open(name+"-children.fasta", "w") as f:
+        
         for i, child in enumerate(children):
-            f.write(FASTA_STR.format(str(i), "".join([AA_DICT[key] for key in child)))
+            string = "".join([AA_DICT[key] for key in child])
+            f.write(FASTA_STR.format(str(i), string))
                                                       
 def main(args):
     
@@ -68,11 +74,11 @@ def main(args):
         config_str = file_descriptor.read()
 
     # Load training data
-    file_parents    = config['file_parents']
-    file_children   = config['file_children']
-    seq_length      = config['seq_length']
-    max_samples     = config['max_samples']
-    data = pre.prepare_data(file_parents, file_children, seq_length = seq_length, max_samples = max_samples)
+    file_parents    = config["Data"]['file_parents']
+    file_children   = config["Data"]['file_children']
+    seq_length      = config["Data"]['seq_length']
+    max_samples     = config["Data"]['max_samples']
+    data = pre.prepare_dataset(file_parents, file_children, seq_length = seq_length, max_samples = max_samples)
     
     # Initiate model
     model = models.VirusGan(config)
@@ -81,12 +87,12 @@ def main(args):
     
     if args.verbose:
         print("Generating children")
-        generated_children = model.generate(data)
+    generated_children = model.generate(data)
     
     if args.verbose:
         print("Writing fasta")
         
-    writing_fasta(parents, children, name = args.output_file)    
+    writing_fasta(generated_children, name = args.output_file)    
     
     return 0
 
