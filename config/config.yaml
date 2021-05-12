@@ -1,6 +1,6 @@
 VirusGan:
     Vocab_size: 21
-    epochs: 5
+    epochs: 200
     batch_size: 32
     dir: "weights/model"
     Generator:
@@ -29,8 +29,8 @@ VirusGan:
         beta_1_generator: 0.5          
     Metrics:
 Data:
-    file_parents: "../../../parent_sequences_translated.fasta"
-    file_children:  "../../../child_sequences_translated.fasta"
+    file_parents: "../../../train_parents"
+    file_children:  "../../../train_child"
     max_samples: 10000
     seq_length: 600
 Log:

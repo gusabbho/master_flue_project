@@ -1,0 +1,39 @@
+VirusGan:
+    Vocab_size: 21
+    epochs: 200
+    batch_size: 32
+    dir: "weights/model"
+    Generator:
+        type: res
+        layers: 6
+        filters: [64, 64, 128, 128, 256, 256]
+        kernels: [3, 3, 3, 3, 3, 3]
+        dilations: [1, 1, 1, 1, 1, 1]
+        use_attention: True
+        use_gumbel: True
+        temperature: 0.5
+    Discriminator:
+        layers: 6
+        filters: [64, 64, 128, 128, 256, 256]
+        kernels: [3, 3, 3, 3, 3, 3]
+        dilations: [1, 1, 1, 1, 1, 1]
+        strides: [1, 1, 2, 2, 2, 2]
+    Losses:
+        loss: Non-Reducing
+    Optimizers:
+        optimizer_discriminator: Adam
+        learning_rate_discriminator: 0.00002
+        beta_1_discriminator: 0.5
+        optimizer_generator: Adam
+        learning_rate_generator: 0.00001
+        beta_1_generator: 0.5          
+    Metrics:
+Data:
+    file_parents: "../../../train_parents"
+    file_children:  "../../../train_child"
+    max_samples: 10000
+    seq_length: 600
+Log:
+    base_dir: "../log"
+Results:
+    base_dir: "../results"

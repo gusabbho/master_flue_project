@@ -39,7 +39,7 @@ def load_data(config):
     seq_length  = config['seq_length']
     max_samples = config['max_samples']
     
-    train, test = prepare_dataset("parent_sequences_translated.fasta", file_children, seq_length = seq_length, max_samples = max_samples)
+    train, test = prepare_dataset("train_parents", file_children, seq_length = seq_length, max_samples = max_samples)
     
 
     data = {"Train-Data": train,
