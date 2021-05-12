@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Conv1D, Dense, Flatten, LeakyReLU, Embedding, Input, LeakyReLU, LayerNormalization, BatchNormalization, Softmax, Concatenate,Dropout
 from utils.layers import SelfAttention, ResMod, Spectral_Norm, GumbelSoftmax
+from utils import preprocessing as pre
 
 
 
@@ -151,5 +152,15 @@ class VirusGan(tf.keras.Model):
         return 0
     #@tf.function
     def generate(self, data):
-        # TODO
-        return 0
+        parents, children = data
+        fake = []
+        for parent in parents:
+            shape = tf.shape(parents)
+            parent = tf.reshape(parents, (1, shape[0], shape[1])):
+            fake_child, _ = self.Generator(parent, training=False)
+            fake.append(fake_child.numpy())
+        seqs = []
+        for seq in fake:
+            seqs.append(pre.convert_table(seq))
+        return seqs
+        

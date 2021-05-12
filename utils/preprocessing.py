@@ -5,6 +5,12 @@ from Bio import SeqIO
 from sklearn.model_selection import train_test_split
 # TODO: Implement data loader
 
+def convert_table(seq):    
+    aas = 'ACDEFGHIKLMNPQRSTVWYX'
+    dict_ = {i:aa for i, aa in enumerate(aas)}
+    seq_str = "".join([dict_[res] for res in seq])
+    return seq_str 
+
 def to_binary(seq, max_length, start_stop = False):
     # eoncode non-standard amino acids like X as all zeros
     # output a array with size of L*20
