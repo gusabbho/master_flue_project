@@ -163,4 +163,4 @@ class VirusGan(tf.keras.Model):
         for seq in fake:
             seqs.append(pre.convert_table(seq))
         return seqs
-        return 0
+        
