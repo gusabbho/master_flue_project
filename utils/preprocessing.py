@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 def convert_table(seq):    
     aas = 'ACDEFGHIKLMNPQRSTVWYX'
     dict_ = {i:aa for i, aa in enumerate(aas)}
-    seq_str = "".join([dict_[res] for res in seq])
+    seq_str = "".join([dict_[res] for res in list(seq)])
     return seq_str 
 
 def to_binary(seq, max_length, start_stop = False):
@@ -55,7 +55,7 @@ def loss_weight(mask, max_length):
     tmp[len_seq:] = 0.0
     return tmp
 
-def prepare_dataset(file_parents, file_children , seq_length = 1024, t_v_split = 0.1, max_samples = 5000):
+def prepare_dataset(file_parents, file_children , seq_length = 1024, t_v_split = 0.1, max_samples = 5000, training=True):
     
   
 
@@ -86,11 +86,17 @@ def prepare_dataset(file_parents, file_children , seq_length = 1024, t_v_split =
    # Splitting data to training and validation sets
     print(len(dict_parents["seq_bin"]))
     print(len(dict_children["seq_bin"]))
-    parent_train, parent_test, child_train, child_test = train_test_split(
-                                                    np.array(dict_parents['seq_bin'],dtype=np.float32),
-                                                    np.array(dict_children['seq_bin'], dtype = np.float32),
-                                                    test_size=t_v_split, random_state=42)
+    if training:
+        parent_train, parent_test, child_train, child_test = train_test_split(
+                                                        np.array(dict_parents['seq_bin'],dtype=np.float32),
+                                                        np.array(dict_children['seq_bin'], dtype = np.float32),
+                                                        test_size=t_v_split, random_state=42)
 
-    dataset_train = tf.data.Dataset.from_tensor_slices((parent_train, child_train))
-    dataset_validate = tf.data.Dataset.from_tensor_slices((parent_test, child_test))
-    return dataset_train, dataset_validate
+        dataset_train = tf.data.Dataset.from_tensor_slices((parent_train, child_train))
+        dataset_validate = tf.data.Dataset.from_tensor_slices((parent_test, child_test))
+        return dataset_train, dataset_validate
+    else:
+        dataset = tf.data.Dataset.from_tensor_slices((np.array(dict_parents['seq_bin'],dtype=np.float32),
+                                                      np.array(dict_children['seq_bin'], dtype = np.float32)))
+        return dataset
+        

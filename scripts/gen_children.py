@@ -14,16 +14,16 @@ from utils import preprocessing as pre
 
 parser = argparse.ArgumentParser(""" """)
 
-parser.add_argument("-i", "--input", type=str, default = '../data/parents')
+parser.add_argument("-i", "--input", type=str, default = None)
 
 parser.add_argument("-w", "--weights", type=str, default = None)
 
-parser.add_argument("-c", "--config", type=str, default = "../config/config.yaml")
+parser.add_argument("-c", "--config", type=str, default = None)
 
-parser.add_argument('-o', '--output', type=str, default = '../data/gen.children.fasta',
+parser.add_argument('-o', '--output', type=str, default = None,
                    help = 'Name to store data')
-parser.add_argument('-n', '--num_data_children', type=int, default=1000,
-                   help = "Number of data points")
+parser.add_argument('-n', '--num_data_children', type=int, default=32,
+                   help = "Number of Children generated per parent")
 
 
 parser.add_argument('-v', '--verbose', action="store_true",
@@ -35,32 +35,32 @@ parser.add_argument("-g", "--gpu", type=str, default = '1')
 
 VOCAB_SIZE = 21
 
-AA = "ARNDCQEGHILKMFPSTWYVBZX"
+AA = "ACDEFGHIKLMNPQRSTVWYX"
 AA_DICT = {index: aa for index, aa in enumerate(AA)}
 
-FASTA_STR = ">{} \n{}\n"
+FASTA_STR = ">parent_{}_child_{} \n{}\n"
 
 
-def generate_children(parents, num_children=1, seq_length= 100, n_mutations= 5):
-    children = parents
-    for i in range(children.shape[0]):
-        mutation_indices = np.random.randint(seq_length, size = n_mutations)
-        mutations = np.random.randint(VOCAB_SIZE, size = n_mutations)
-        children[i,mutation_indices] = mutations
-    return children
+
 
 def writing_fasta(children, name = "data"):
-    with open(name+"-children.fasta", "w") as f:
-        
-        for i, child in enumerate(children):
-            string = "".join([AA_DICT[key] for key in child])
-            f.write(FASTA_STR.format(str(i), string))
+    with open(name, "w") as f:
+        for p, key in enumerate(children.keys()):
+            for i, child in enumerate(children[key]):
+                #string = "".join([AA_DICT[key] for key in child])
+                f.write(FASTA_STR.format(str(p), str(i), child))
                                                       
 def main(args):
     
-    if args.verbose:
-        print("Making parents")
-    
+    experiments = os.listdir("../results")
+    experiments.sort(key=lambda date: datetime.datetime.strptime(date, "%Y%m%d-%H%M%S"))
+    latest_experiment = experiments[-1]
+    if args.config == None:
+        args.config = os.path.join("../results", latest_experiment, "config.yaml")
+    if args.weights == None:
+        args.weights = os.path.join("../results",latest_experiment, "weights/virus_gan_model")
+    if args.output == None:
+        args.output = os.path.join("../results", latest_experiment, "gen_children.fasta")
     
     
     # Get time stamp
@@ -78,7 +78,7 @@ def main(args):
     file_children   = config["Data"]['file_children']
     seq_length      = config["Data"]['seq_length']
     max_samples     = config["Data"]['max_samples']
-    data = pre.prepare_dataset(file_parents, file_children, seq_length = seq_length, max_samples = max_samples)
+    data = pre.prepare_dataset(file_parents, file_children, seq_length = seq_length, max_samples = max_samples, training = False)
     
     # Initiate model
     model = models.VirusGan(config)
@@ -87,12 +87,12 @@ def main(args):
     
     if args.verbose:
         print("Generating children")
-    generated_children = model.generate(data)
+    generated_children = model.generate(data, n_children = args.num_data_children)
     
     if args.verbose:
         print("Writing fasta")
         
-    writing_fasta(generated_children, name = args.output_file)    
+    writing_fasta(generated_children, name = args.output)    
     
     return 0
 

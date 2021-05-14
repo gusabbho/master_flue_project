@@ -16,12 +16,13 @@ class WassersteinLoss(Loss):
     
     # Define the loss function for the generators
     def generator_loss_fn(self, fake):
-        return -tf.reduce_mean(fake, axis=0)
+        return -tf.math.reduce_mean(fake, axis=0)
 
     # Define the loss function for the discriminators
     def discriminator_loss_fn(self, real, fake):
-        real_loss = tf.reduce_mean(real)
-        fake_loss = tf.reduce_mean(fake)
+        
+        real_loss = tf.math.reduce_mean(real)
+        fake_loss = tf.math.reduce_mean(fake)
         return fake_loss - real_loss
     
 class NonReduceingLoss(Loss):
@@ -36,12 +37,15 @@ class NonReduceingLoss(Loss):
         super(NonReduceingLoss, self).__init__()
         
     def generator_loss_fn(self, fake):
-        return K.mean(K.softplus(-fake), axis=0)
+        return -tf.math.reduce_mean(tf.math.log(fake))
+        #return K.mean(K.softplus(-fake), axis=0)
     
     def discriminator_loss_fn(self, real, fake):
-        L1 = K.mean(K.softplus(-real), axis=0)
-        L2 = K.mean(K.softplus(fake), axis=0)
-        return L1 + L2
+        L1 = tf.math.reduce_mean(tf.math.log(real))
+        L2 = tf.math.reduce_mean(tf.math.log(tf.ones_like(fake)-fake))
+        #L1 = K.mean(K.softplus(-real), axis=0)
+        #L2 = K.mean(K.softplus(fake), axis=0)
+        return -1*(L1 + L2)
     
 class HingeLoss(Loss):
     """

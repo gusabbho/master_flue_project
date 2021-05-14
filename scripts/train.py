@@ -39,7 +39,7 @@ def load_data(config):
     seq_length  = config['seq_length']
     max_samples = config['max_samples']
     
-    train, test = prepare_dataset("train_parents", file_children, seq_length = seq_length, max_samples = max_samples)
+    train, test = prepare_dataset(file_parents, file_children, seq_length = seq_length, max_samples = max_samples)
     
 
     data = {"Train-Data": train,
@@ -109,11 +109,11 @@ def train(config, model, data, time):
     for epoch in range(config['VirusGan']['epochs']):
         # TODO change buffer size to fit data set 
         batches = data['Train-Data'].shuffle(buffer_size = 40000).batch(config['VirusGan']['batch_size'], drop_remainder=True) 
-  
+        
         #Anneal schedule for gumbel
         if config['VirusGan']['Generator']['use_gumbel']:
                 model.Generator.gms.tau = max(0.3, np.exp(-0.01*epoch))
-                
+                print(model.Generator.gms.tau)
         for step, x in enumerate(batches):
             
             loss, logits = model.train_step(batch_data = x)
@@ -122,9 +122,13 @@ def train(config, model, data, time):
             metrics['Discriminator_loss'](loss["Discriminator_loss"])
 
         # TODO Validation of training
+        
         if epoch % 10 == 0:
+            generated_children = model.generate(data['Test-Data'], n_children = 1)
+            for key in generated_children.keys():
+                for child in generated_children[key]:
+                    print(child[:100])
             pass
-
 
 
         if args.verbose:    

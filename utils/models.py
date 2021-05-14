@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow_addons as tfa
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Conv1D, Dense, Flatten, LeakyReLU, Embedding, Input, LeakyReLU, LayerNormalization, BatchNormalization, Softmax, Concatenate,Dropout
 from utils.layers import SelfAttention, ResMod, Spectral_Norm, GumbelSoftmax
@@ -7,64 +8,71 @@ from utils import preprocessing as pre
 
 
 class Generator_res(Model):
-    def __init__(self, filters, size, dilation, vocab, use_gumbel, temperature = 0.5):
+    def __init__(self, config, filters, size, dilation, vocab, use_gumbel, temperature = 0.5):
         super(Generator_res, self).__init__()
-        self.res1 = ResMod(filters[0], size[0], dilation = dilation[0])
-        self.res2 = ResMod(filters[1], size[1], dilation = dilation[1])
-        self.res3 = ResMod(filters[2], size[2], dilation = dilation[2])
-        self.res4 = ResMod(filters[3], size[3], dilation = dilation[3])
-        self.res5 = ResMod(filters[4], size[4], dilation = dilation[4])
-        self.res6 = ResMod(filters[5], size[5], dilation = dilation[5])
+        self.n_l = config["layers"]
+        self.res = []
+        for i in range(self.n_l):
+            self.res.append(ResMod(filters[i], size[i], dilation = dilation[i]))
         
-        self.atte = SelfAttention(256)
+        self.concat = Concatenate()
+        self.atte_loc = config['attention_loc']
+        self.atte = SelfAttention(filters[self.atte_loc])
         if use_gumbel:
             self.gms = GumbelSoftmax(temperature = 0.5)
         else:
             self.gms = Softmax()
         self.out = Conv1D(vocab, 3, padding = 'same', activation = self.gms)
     def call(self, x):
-        #TODO ADD in noise
         shape = tf.shape(x)
         noise= tf.random.normal(shape)
-        #newe_data = our_data + noise
-        x = self.res1(x + noise)
-        x = self.res2(x)
-        x = self.res3(x)
-        x = self.res4(x)
-        x = self.res5(x)
-        x, a_w = self.atte(x)
-        x = self.res6(x)
+        x = self.concat([x, noise])
+        for i in range(self.n_l):
+            x = self.res[i](x)
+            if self.atte_loc == i:
+                x, a_w = self.atte(x)
         x = self.out(x)
         return x, a_w
     
 class Discriminator(Model):
-    def __init__(self, filters, size, strides, dilation, vocab, activation = 'sigmoid' ):
+    def __init__(self,config, filters, size, strides, dilation, vocab, activation = 'sigmoid' ):
         super(Discriminator, self).__init__()
-        self.constraint = Spectral_Norm()
+
         self.act = LeakyReLU(0.2)
-        self.conv1 = Conv1D(filters[0], size[0], strides=strides[0], padding='same', kernel_constraint = self.constraint, use_bias = False)
-        self.conv2 = Conv1D(filters[1], size[0], strides=strides[0], padding='same', kernel_constraint = self.constraint, use_bias = False)
-        self.conv3 = Conv1D(filters[2], size[0], strides=strides[0], padding='same', kernel_constraint = self.constraint, use_bias = False)
-        self.conv4 = Conv1D(filters[3], size[0], strides=strides[0], padding='same', kernel_constraint = self.constraint, use_bias = False)
-        self.atte = SelfAttention(vocab*2)
-        self.conv = Conv1D(1, 4, strides=1, activation= activation, padding='same', kernel_constraint = self.constraint, use_bias = False)
+        self.n_l = config["layers"]
+        self.conv = []
+        for i in range(self.n_l):
+            self.conv.append(tfa.layers.SpectralNormalization(Conv1D(filters[i],
+                                                                     size[i],
+                                                                     strides=strides[i],
+                                                                     padding='same',
+                                                                     use_bias = False)))
+
+        self.atte_loc = config["attention_loc"]
+        self.atte = SelfAttention( filters[self.atte_loc])
+        self.flat  = Flatten()
+        self.dense = tfa.layers.SpectralNormalization(Dense(1, 
+                                                            activation= activation,
+                                                            use_bias = False))
         self.cat = Concatenate(axis=-1)
         
     def call(self, parent, child):
         x = self.cat([parent, child])
-        x, a_w = self.atte(x)
-        x = self.act(self.conv1(x))
-        x = self.act(self.conv2(x))
-        x = self.act(self.conv3(x))
-        x = self.act(self.conv4(x))
-        return self.conv(x), a_w
+
+        for i in range(self.n_l):
+            x = self.act(self.conv[i](x))
+            if self.atte_loc == i:
+                x, a_w = self.atte(x)
+
+        x = self.flat(x)
+        return self.dense(x), a_w 
     
 class VirusGan(tf.keras.Model):
 
     def __init__(self, config):
         super(VirusGan, self).__init__()
         self.Generator, self.Discriminator = self.load_models(config['VirusGan'])
-         
+        
         self.add  = tf.keras.layers.Add()
 
     def compile( self, loss_obj, optimizers):
@@ -100,9 +108,9 @@ class VirusGan(tf.keras.Model):
 
         vocab = config["Vocab_size"] 
 
-        generator = Generator_res(G_filters, G_sizes, G_dilation, vocab, use_gumbel = G_gumbel, temperature = G_temperature)
+        generator = Generator_res(config["Generator"],G_filters, G_sizes, G_dilation, vocab, use_gumbel = G_gumbel, temperature = G_temperature)
          
-        discriminator = Discriminator(D_filters, D_sizes, D_strides, D_dilation, vocab, activation = D_activation)
+        discriminator = Discriminator(config["Discriminator"],D_filters, D_sizes, D_strides, D_dilation, vocab, activation = D_activation)
 
         return generator, discriminator
     
@@ -118,15 +126,12 @@ class VirusGan(tf.keras.Model):
             
             # Generator output
             fake_child, _ = self.Generator(parent, training=True)
-
             # Discriminator output
             disc_real_child, _ = self.Discriminator(parent, child, training=True)
             disc_fake_child, _ = self.Discriminator(parent, fake_child, training=True)
-            
             # Loss for generator and discriminator
             gen_loss = self.generator_loss_fn(disc_fake_child)
             disc_loss = self.discriminator_loss_fn(disc_real_child, disc_fake_child)
-
         # Get the gradients for the generator
         gen_grads = tape.gradient(gen_loss, self.Generator.trainable_variables)
        
@@ -151,17 +156,23 @@ class VirusGan(tf.keras.Model):
         # TODO 
         return 0
     #@tf.function
-    def generate(self, data):
-        print("flag")
-        parents, children = data[0]
+    def generate(self, data, n_children = 32):
+        
         fake = []
-        for parent in parents:
-            shape = tf.shape(parents)
-            parent = tf.reshape(parents, (1, shape[0], shape[1]))
+        for n_p, d in enumerate(data):
+            parent, child = d
+            shape = tf.shape(parent)
+            parent = tf.reshape(parent, (1, shape[0], shape[1]))
+            parent = tf.repeat(parent, repeats=n_children, axis=0)
             fake_child, _ = self.Generator(parent, training=False)
+            fake_child = tf.math.argmax(fake_child, axis=-1)
             fake.append(fake_child.numpy())
-        seqs = []
-        for seq in fake:
-            seqs.append(pre.convert_table(seq))
+        seqs = {}
+        for i, parent in enumerate(fake):
+            seqs[i] = []
+            #print("parent", parent)
+            for seq in parent:
+              #  print("seq", seq)
+                seqs[i].append(pre.convert_table(seq))
         return seqs
         
