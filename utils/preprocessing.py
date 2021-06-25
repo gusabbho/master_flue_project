@@ -82,9 +82,12 @@ def prepare_dataset(file_parents,
 
     # DEBUG:
     if not training:
-        print('\n=' * 80)
-        print(parents_seq_bin)
-        print(children_seq_bin)
+        from IPython.display import display
+        print('=' * 80)
+        display(parents_seq)
+        display(children_seq)
+        print(len(parents_seq_bin))
+        print(len(children_seq_bin))
         print('=' * 80)
         print()
 
@@ -120,7 +123,7 @@ def get_matched_parent_and_child_sequences(file_parents, file_children, max_seq_
         parent_sequences,
         on='parent_id'
     )
-
+    
     # parent_id, child_id, parent_seq, child_seq
     matched_sequences = pd.merge(
         parent_seq_with_child_ids,
