@@ -3,7 +3,8 @@ import numpy as np
 import tensorflow as tf
 from Bio import SeqIO
 from sklearn.model_selection import train_test_split
-# TODO: Implement data loader
+import pandas as pd
+
 
 def convert_table(seq):    
     aas = 'ACDEFGHIKLMNPQRSTVWYX'
@@ -55,48 +56,85 @@ def loss_weight(mask, max_length):
     tmp[len_seq:] = 0.0
     return tmp
 
-def prepare_dataset(file_parents, file_children , seq_length = 1024, t_v_split = 0.1, max_samples = 5000, training=True):
-    
-  
 
-    count=0
-    dict_parents = {'id':[] ,'mask':[],'seq':[], 'seq_bin':[], 'loss_weight':[]}
-    dict_children = {'id':[] ,'mask':[],'seq':[], 'seq_bin':[], 'loss_weight':[]}
-    # loading data to dict
-    for i, rec in enumerate(SeqIO.parse(file_parents, 'fasta')):
-        count +=1
-        if count >max_samples:
-            break
-        if len(rec.seq)>seq_length:
-            continue
-        dict_parents['id'].append(rec.id)
-        dict_parents['seq'].append(str(rec.seq))
-        dict_parents['seq_bin'].append(to_binary(rec.seq, max_length=seq_length))
-    count=0
-    for i, rec in enumerate(SeqIO.parse(file_children, 'fasta')):
-        count +=1
-        if count >max_samples:
-            break
-        if len(rec.seq)>seq_length:
-            continue
-        dict_children['id'].append(rec.id)
-        dict_children['seq'].append(str(rec.seq))
-        dict_children['seq_bin'].append(to_binary(rec.seq, max_length=seq_length))
-      
-   # Splitting data to training and validation sets
-    print(len(dict_parents["seq_bin"]))
-    print(len(dict_children["seq_bin"]))
+def prepare_dataset(file_parents, 
+                    file_children, 
+                    seq_length = 1024, 
+                    t_v_split = 0.1, 
+                    max_samples = 5000, 
+                    training=True):
+    
+    max_seq_length = seq_length
+    max_num_of_sequences = max_samples
+
+    parent_child_association_table = pd.read_csv('/home/hosseina/codes/data_preparation/MSA_16.3/phylo_by_RAxML/ML/master_flue_project/scripts/parent_child_association.csv')
+    parent_child_association_table = parent_child_association_table[['parent_id', 'child_id']]
+
+    parent_sequences = fasta_to_seq_df(file_parents, ['parent_id', 'parent_sequence'])
+    child_sequences = fasta_to_seq_df(file_children, ['child_id', 'child_sequence'])
+    
+    # columns: parent_id, child_id, parent_seq
+    parent_seq_with_child_ids = pd.merge(
+        parent_child_association_table,
+        parent_sequences,
+        on = 'parent_id'
+    )   
+    
+    # parent_id, child_id, parent_seq, child_seq
+    matched_sequences = pd.merge(
+        parent_seq_with_child_ids,
+        child_sequences,
+        on = 'child_id'
+    )
+    
+    # Remove child and parent sequences longer than max_seq_length
+    matched_sequences = matched_sequences[
+        (matched_sequences['parent_sequence'].str.len() <= max_seq_length)
+        & (matched_sequences['child_sequence'].str.len() <= max_seq_length)
+    ]
+    
+    # Keep only first max_num_of_sequences sequences
+    if matched_sequences.shape[0] > max_num_of_sequences:
+        matched_sequences = matched_sequences.head(max_num_of_sequences)
+    
+    parents_seq = matched_sequences['parent_sequence']
+    children_seq = matched_sequences['child_sequence']
+
+    # bin = one-hot encoded sequences
+    parents_seq_bin = []
+    children_seq_bin = []
+    for seq in parents_seq.values:
+        parents_seq_bin.append(to_binary(seq, max_length=max_seq_length))   
+    for seq in children_seq.values:
+        children_seq_bin.append(to_binary(seq, max_length=max_seq_length))
+
+    # Splitting data to training and validation sets
     if training:
         parent_train, parent_test, child_train, child_test = train_test_split(
-                                                        np.array(dict_parents['seq_bin'],dtype=np.float32),
-                                                        np.array(dict_children['seq_bin'], dtype = np.float32),
+                                                        np.array(parents_seq_bin, dtype=np.float32),
+                                                        np.array(children_seq_bin, dtype = np.float32),
                                                         test_size=t_v_split, random_state=42)
 
         dataset_train = tf.data.Dataset.from_tensor_slices((parent_train, child_train))
         dataset_validate = tf.data.Dataset.from_tensor_slices((parent_test, child_test))
         return dataset_train, dataset_validate
     else:
-        dataset = tf.data.Dataset.from_tensor_slices((np.array(dict_parents['seq_bin'],dtype=np.float32),
-                                                      np.array(dict_children['seq_bin'], dtype = np.float32)))
+        dataset = tf.data.Dataset.from_tensor_slices((np.array(parents_seq_bin,dtype=np.float32),
+                                                      np.array(children_seq_bin, dtype = np.float32)))
         return dataset
         
+
+
+def fasta_to_seq_df(filename: str, column_names: list) -> pd.DataFrame:
+    return pd.DataFrame([[entry.id, str(entry.seq)]
+                          for entry in list(SeqIO.parse(str(filename), 'fasta'))],
+                        columns=column_names)
+
+def save_df_as_fasta(df, id_col, seq_col, fasta_filename):
+    df = df[[id_col, seq_col]]
+    entries = []
+    for row in df.values:
+        record = SeqRecord(Seq(row[1]), id = row[0], name=row[0], description='')
+        entries.append(record)
+    with open(fasta_filename, 'w') as outfile:
+        SeqIO.write(entries, outfile, 'fasta') 
