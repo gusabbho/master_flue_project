@@ -80,6 +80,14 @@ def prepare_dataset(file_parents,
     for seq in children_seq.values:
         children_seq_bin.append(to_binary(seq, max_length=max_seq_length))
 
+    # DEBUG:
+    if not training:
+        print('\n=' * 80)
+        print(parents_seq_bin)
+        print(children_seq_bin)
+        print('=' * 80)
+        print()
+
     # Splitting data to training and validation sets
     if training:
         parent_train, parent_test, child_train, child_test = train_test_split(
@@ -90,6 +98,7 @@ def prepare_dataset(file_parents,
         dataset_train = tf.data.Dataset.from_tensor_slices((parent_train, child_train))
         dataset_validate = tf.data.Dataset.from_tensor_slices((parent_test, child_test))
         return dataset_train, dataset_validate
+
     else:
         dataset = tf.data.Dataset.from_tensor_slices(
             (np.array(parents_seq_bin, dtype=np.float32),
