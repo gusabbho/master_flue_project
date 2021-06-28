@@ -65,6 +65,11 @@ def main(args):
     max_samples     = config["Data"]['max_samples']
 
     data = pre.prepare_dataset(file_parents, file_children, seq_length = seq_length, max_samples = max_samples, training = False)
+    matched_sequences = pre.get_matched_parent_and_child_sequences(file_parents,
+                                                                   file_children,
+                                                                   max_seq_length = seq_length,
+                                                                   max_num_of_sequences = max_samples)
+    parent_ids = matched_sequences['parent_id'].values
 
     # Initiate model
     model = models.VirusGan(config)
@@ -72,7 +77,9 @@ def main(args):
 
     if args.verbose:
         print("Generating children")
-    generated_children = model.generate(data, n_children = args.num_data_children)
+    generated_children = model.generate(data,
+                                        n_children = args.num_data_children,
+                                        parent_ids = parent_ids)
 
     if args.verbose:
         print("Writing fasta")
