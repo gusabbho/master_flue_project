@@ -32,12 +32,11 @@ AA_DICT = {index: aa for index, aa in enumerate(AA)}
 FASTA_STR = ">parent_{}_child_{} \n{}\n"
 
 
-def writing_fasta(children, name = "data"):
-    with open(name, "w") as f:
-        for p, key in enumerate(children.keys()):
-            for i, child in enumerate(children[key]):
-                #string = "".join([AA_DICT[key] for key in child])
-                f.write(FASTA_STR.format(str(p), str(i), child))
+def write_fasta(children: dict, name = "data"):
+    with open(name, "w") as fout:
+        for parent_id, child_seq_list in children.items():
+            for i, child_seq in enumerate(child_seq_list):
+                fout.write(FASTA_STR.format(str(parent_id), str(i), child_seq))
 
 
 def main(args):
@@ -84,7 +83,7 @@ def main(args):
     if args.verbose:
         print("Writing fasta")
 
-    writing_fasta(generated_children, name = args.output)
+    write_fasta(generated_children, name = args.output)
 
     return 0
 

@@ -157,9 +157,11 @@ class VirusGan(tf.keras.Model):
         return 0
 
     #@tf.function
-    def generate(self, data, n_children = 32, parent_ids = None):
+    def generate(self, data, n_children = 32, parent_ids = None) -> dict:
         """
         NOTE!! parent_ids are assumed to match the order of the encoded data
+
+        Return a dictionary like {parent_id: [child_sequences (list)]}
         """
         fake = []
         for n_p, d in enumerate(data):
@@ -177,11 +179,9 @@ class VirusGan(tf.keras.Model):
         else:
             fake_data = zip(parent_ids, fake)
 
-        for i, parent in fake_data:
-            seqs[i] = []
-            #print("parent", parent)
+        for parent_id, parent in fake_data:
+            seqs[parent_id] = []
             for seq in parent:
-              #  print("seq", seq)
-                seqs[i].append(pre.convert_table(seq))
+                seqs[parent_id].append(pre.convert_table(seq))
         return seqs
 
