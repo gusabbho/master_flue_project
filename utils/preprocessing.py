@@ -136,7 +136,12 @@ def get_matched_parent_and_child_sequences(file_parents, file_children, max_seq_
     )
 
     print("#" * 80)
-    print('N test children after matching:', matched_sequences['child_id'].shape[0])
+    print('N unique test children after matching:', matched_sequences['child_id'].unique().shape[0])
+    print("#" * 80)
+
+    matched_sequences = matched_sequences.drop_duplicates(subset=['child_id'])
+    print("#" * 80)
+    print('N test children after fixing:', matched_sequences['child_id'].shape[0])
     print("#" * 80)
 
     # Remove child and parent sequences longer than max_seq_length
