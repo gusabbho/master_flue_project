@@ -117,10 +117,6 @@ def get_matched_parent_and_child_sequences(file_parents, file_children, max_seq_
     parent_sequences = fasta_to_seq_df(file_parents, ['parent_id', 'parent_sequence'])
     child_sequences = fasta_to_seq_df(file_children, ['child_id', 'child_sequence'])
 
-    print("#" * 80)
-    print('N test children before matching:', child_sequences.shape[0])
-    print("#" * 80)
-
     # columns: parent_id, child_id, parent_seq
     parent_seq_with_child_ids = pd.merge(
         parent_child_association_table,
@@ -135,14 +131,9 @@ def get_matched_parent_and_child_sequences(file_parents, file_children, max_seq_
         on='child_id'
     )
 
-    print("#" * 80)
-    print('N unique test children after matching:', matched_sequences['child_id'].unique().shape[0])
-    print("#" * 80)
-
+    # Note: Because we're using the full association table to match only the test subset,
+    # the matching will result in duplicate entries, so remove those here:
     matched_sequences = matched_sequences.drop_duplicates(subset=['child_id'])
-    print("#" * 80)
-    print('N test children after fixing:', matched_sequences['child_id'].shape[0])
-    print("#" * 80)
 
     # Remove child and parent sequences longer than max_seq_length
     matched_sequences = matched_sequences[
