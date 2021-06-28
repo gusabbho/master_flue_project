@@ -117,19 +117,27 @@ def get_matched_parent_and_child_sequences(file_parents, file_children, max_seq_
     parent_sequences = fasta_to_seq_df(file_parents, ['parent_id', 'parent_sequence'])
     child_sequences = fasta_to_seq_df(file_children, ['child_id', 'child_sequence'])
 
+    print("#" * 80)
+    print('N test children before matching:', child_sequences.shape[0])
+    print("#" * 80)
+
     # columns: parent_id, child_id, parent_seq
     parent_seq_with_child_ids = pd.merge(
         parent_child_association_table,
         parent_sequences,
         on='parent_id'
     )
-    
+
     # parent_id, child_id, parent_seq, child_seq
     matched_sequences = pd.merge(
         parent_seq_with_child_ids,
         child_sequences,
         on='child_id'
     )
+
+    print("#" * 80)
+    print('N test children after matching:', matched_sequences['child_id'].shape[0])
+    print("#" * 80)
 
     # Remove child and parent sequences longer than max_seq_length
     matched_sequences = matched_sequences[
