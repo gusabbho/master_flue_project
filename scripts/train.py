@@ -20,7 +20,10 @@ from utils import models
 from utils import losses
 
 
-tf.random.set_seed(123)
+RANDOM_SEED = 123
+os.environ['PYTHONHASHSEED'] = '0'
+np.random.seed(RANDOM_SEED)
+tf.random.set_seed(RANDOM_SEED)
 
 
 parser = argparse.ArgumentParser(""" """)
