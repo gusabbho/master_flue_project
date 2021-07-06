@@ -20,6 +20,9 @@ from utils import models
 from utils import losses
 
 
+tf.random.set_seed(123)
+
+
 parser = argparse.ArgumentParser(""" """)
 
 parser.add_argument('-c', '--config', type=str, default = 'config.yaml',
