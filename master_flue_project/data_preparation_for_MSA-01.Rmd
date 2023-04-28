@@ -1,0 +1,186 @@
+#first the genomeset.dat table down loaded, and now we change the columns of table.
+```{r}
+library(tidyverse)
+genomeset <- genomeset %>% 
+  rename(
+    gene_id = V1,
+    Host = V2,
+    Genome_segment = V3,
+    Subtype = V4,
+    country = V5,
+    Date = V6,
+    Seq_length = V7,
+    Virus_name = V8,
+    Age = V9,
+    Gender = V10,
+    ID_for_same_virus = V11
+  )
+```
+
+
+#then with this command the viruses from genomeset table (in Virus_name) column which repeated more that 8 time filtered.
+
+
+```{r}
+    virus_rep <- group_by(genomeset, Virus_name) %>% 
+    summarise(rep= n()) %>% 
+    filter(rep >=8)
+
+```
+
+
+#now we want the intersect part of virus_repp that we made in the previous command with the main genomeset make 
+#a new table called filtered genomeset.
+```{r}
+filtered_genomeset<- inner_join(virus_rep, genomeset, by= "Virus_name")
+```
+
+##then we should filter for H3N2 and segment number for HA protein.
+#output :second_filter
+
+
+```{r}
+second_filter<- filter(filtered_genomeset, Subtype == "H3N2") 
+  
+  
+```
+
+#last filter is for the genes of HA protein which denoted by segment 4.
+```{r}
+last_filter <- filter(second_filter, Genome_segment == 4)
+```
+
+# oops! one more filter should be done is removeing the duplicate suquences based on their isolate name and isolate date.
+
+```{r}
+last_filter <- last_filter[!duplicated(last_filter$Virus_name),]
+```
+
+
+
+#for easiness in next steps it's better to change the Genebank_accession column 
+#name to gene_id
+```{r}
+names(last_filter)[names(last_filter) == "Genebank_accession"] <- "gene_id"
+```
+
+
+
+
+
+
+#### this was the whole filtering for genomeset table
+
+
+################
+
+#now for our new data, we gonna rename the column names.
+```{r}
+names(influenza) <- c( "seq", "codes")
+```
+
+
+#now we should extract only the gene accession in the 
+#influenza table. for this aim we need following libraries.
+
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("Biostrings")
+```
+ 
+#for reading our file like a fasta file we should use the following command.
+#note: this command wasn't working , untill I changed the working directory from the sessions.
+
+
+```{r}
+sequences <- Biostrings::readDNAStringSet("influenza.fna")
+```
+
+#then we should convert the sequences file resulted from the previous command to a table.
+
+```{r}
+sequences <- data.frame(gene_info = names(sequences),
+                        sequence = paste(sequences))
+```
+
+#now we want to extract the gene id from the gene info column in sequence table.
+#the following line makes a function and call it "extract_gene_id_from_names".
+##note for sepecifying the "|" as symbol and not a argument , we need to 
+##use \\ before | sign.
+```{r}
+extract_gene_id_from_names <- function(name){
+  stringr::str_split(name,pattern ="\\|")[[1]][[4]]
+  }
+```
+
+#now we use this function for sequences table to extract the gene ids.
+
+```{r}
+fasta_table <- sequences %>% 
+  mutate(gene_id = sapply(gene_info, extract_gene_id_from_names)) %>% 
+  select(-gene_info)
+```
+
+#now we want to extract the intersect genes that we have frome #genomeset(last_filter file) and the influenza whole genes file (fasta_table)
+
+```{r}
+HA_genes <- inner_join(last_filter, fasta_table, by= "gene_id")
+```
+
+#next steps that we want to use maftt for alignment our csv file's header 
+#should start with ">" so we used this file to add ">" sign at the first.
+#note: in further steps , phylogeny tree will use the first character of header, so it's 
+#better to use the gene_id as first word in header
+```{r}
+HA_genes$gene_id <- sub("^",">", HA_genes$gene_id)
+```
+
+
+#at last we should make a table which has two column on the name of gene and the
+#the second is the sequences.
+
+```{r}
+HA_genes$header <- paste(HA_genes$gene_id,HA_genes$Virus_name,HA_genes$Host,
+                         HA_genes$Subtype,HA_genes$country,HA_genes$Date)
+```
+#now cause I don't want make a mistake , I keet the above table and make a new 
+#table which only have two columns header and squence.
+##we also should notice that the header should be the first column.
+
+```{r}
+HA_genes_ready <- HA_genes %>% select(14, 13)
+```
+
+##we should convert the table to csv file.
+ 
+## "HA_genes_ready.csv
+
+```{r}
+write_csv(HA_genes_ready,"HA_genes_ready.csv" )
+```
+
+
+```{r}
+library (devtools)
+library (tidyverse)
+TabularToFasta("HA_genes_ready.csv")
+```
+
+## gave a file with "dna_fasta.fasta" name which then I changed ##the name of file to "HA_genes_ready.fasta"
+
+##now our data is prepared for aligning and next for making phylogeny.
+
+
+
+
+
+
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
