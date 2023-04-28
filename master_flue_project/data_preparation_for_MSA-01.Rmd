@@ -1,4 +1,4 @@
-#first the genomeset.dat table down loaded, and now we change the columns of table.
+# first the genomeset.dat table down loaded, and now we change the columns of table.
 ```{r}
 library(tidyverse)
 genomeset <- genomeset %>% 
